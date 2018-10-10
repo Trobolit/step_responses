@@ -45,7 +45,7 @@ void pubEnginePower()
 		pwr_msg.linear.y = 0;
 	}
 	
-	pwr_msg.linear.z = ros::Time::now().toSec();
+	pwr_msg.linear.z = t_elapsed; //ros::Time::now().toSec();
 	motor_power_pub.publish(pwr_msg);
 	return;
 }
