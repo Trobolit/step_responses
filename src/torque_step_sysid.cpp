@@ -16,12 +16,13 @@
 #define SUBSCRIBE_WHEEL_VEL "wheel_velocity"
 #define BUFFER_SIZE 5
 #define POWER_BUFFER_SIZE 200
-#define LOOP_FREQ 20
+#define LOOP_FREQ 100
 
-#define STEP_SIZE 50
-#define START_TIME 3
-#define PULSE_TIME 5
-#define DELAY_OFF 5
+//#define STEP_SIZE 100
+#define START_TIME 2
+//#define PULSE_TIME 10
+#define DELAY_OFF 8
+float pulse_time;
 
 geometry_msgs::Twist pwr_msg;
 ros::Publisher motor_power_pub;
@@ -30,25 +31,29 @@ ros::Subscriber wheel_vel_sub;
 float current_L_vel = 0;
 float current_R_vel = 0;
 
+float step_size;
 
-clock_t t_start;
+//clock_t t_start;
 float t_elapsed = 0;
+int loop_times = 0;
 bool run = true;
 
 // publish when new steering directions are set
 void pubEnginePower()
 {
-	t_elapsed = 100*((float)clock() - (float)t_start)/CLOCKS_PER_SEC; // in seconds
+	//t_elapsed = 100*((float)clock() - (float)t_start)/CLOCKS_PER_SEC; // in seconds
 
-	if( t_elapsed < 3){
+	t_elapsed = (float)loop_times/LOOP_FREQ ;
+
+	if( t_elapsed < START_TIME){
 		pwr_msg.linear.x = 0;
 		pwr_msg.linear.y = 0;
 	}
-	else if(t_elapsed < PULSE_TIME + START_TIME){
-		pwr_msg.linear.x = STEP_SIZE;
-		pwr_msg.linear.y = STEP_SIZE;
+	else if(t_elapsed < pulse_time + START_TIME){
+		pwr_msg.linear.x = step_size;
+		pwr_msg.linear.y = step_size;
 	}
-	else if(t_elapsed < PULSE_TIME + START_TIME + DELAY_OFF ){
+	else if(t_elapsed < pulse_time + START_TIME + DELAY_OFF ){
 		pwr_msg.linear.x = 0;
 		pwr_msg.linear.y = 0;
 	}
@@ -74,6 +79,10 @@ int main(int argc, char **argv)
   ros::init(argc, argv, NODE_NAME);
 
   ros::NodeHandle n;
+  ros::NodeHandle nh(NODE_NAME);
+  nh.param<float>("step_size",step_size,50.0);
+  nh.param<float>("pulse_time",pulse_time,5.0);
+
   ros::Rate loop_rate(LOOP_FREQ);
   
   //set up communication channels
@@ -84,13 +93,19 @@ int main(int argc, char **argv)
   float updatefreq = LOOP_FREQ;
 
   ROS_INFO("Data in format: t, L_pow, R_pow, L_vel, R_vel");
-  t_start = clock();
-
+ // t_start = clock();
+  int i = 1;
   while(ros::ok() && run){
-
-	pubEnginePower();
-	ROS_INFO("%f,%f,%f,%f,%f",t_elapsed,pwr_msg.linear.x, pwr_msg.linear.y, current_L_vel, current_R_vel);
-  	ros::spinOnce();
+	loop_times++;
+	//std::cout << "yo\n";
+	//ROS_INFO("yo");
+	if( i == 5 ) {
+		i = 0;
+		pubEnginePower();
+	}
+	ROS_INFO("%f,%f,%f,%f,%f",(float)loop_times/LOOP_FREQ,pwr_msg.linear.x, pwr_msg.linear.y, current_L_vel, current_R_vel);
+  	i++;
+	ros::spinOnce();
   	loop_rate.sleep();
 
   }
