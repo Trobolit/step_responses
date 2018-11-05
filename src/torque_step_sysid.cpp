@@ -4,6 +4,8 @@
 #include "geometry_msgs/Twist.h"
 #include <time.h>
 #include <math.h>
+#include <string>
+#include <vector>
 
 #include "std_msgs/Float32MultiArray.h"
 #include "std_msgs/MultiArrayLayout.h"
@@ -13,6 +15,7 @@
 //constant setup variables change those values here
 #define NODE_NAME "torque_step_sysid"
 #define ADVERTISE_POWER "motor_power" //publishing channel
+#define JOY_PUB "joy"
 #define SUBSCRIBE_WHEEL_VEL "wheel_velocity"
 #define BUFFER_SIZE 5
 #define POWER_BUFFER_SIZE 200
@@ -24,6 +27,7 @@
 #define DELAY_OFF 8
 float pulse_time;
 
+sensor_msgs::Joy joy;
 geometry_msgs::Twist pwr_msg;
 ros::Publisher motor_power_pub;
 ros::Subscriber wheel_vel_sub;
@@ -35,8 +39,14 @@ float step_size;
 
 //clock_t t_start;
 float t_elapsed = 0;
+float last = 0;
+int i = 0;
 int loop_times = 0;
 bool run = true;
+
+std::string s;
+std::string splited;
+std::vector<float> instruct;
 
 // publish when new steering directions are set
 void pubEnginePower()
@@ -44,24 +54,15 @@ void pubEnginePower()
 	//t_elapsed = 100*((float)clock() - (float)t_start)/CLOCKS_PER_SEC; // in seconds
 
 	t_elapsed = (float)loop_times/LOOP_FREQ ;
-
-	if( t_elapsed < START_TIME){
-		pwr_msg.linear.x = 0;
-		pwr_msg.linear.y = 0;
+	joy.buttons[7] = 1;
+	if( t_elapsed > last){
+		joy.axes[0] = instruct[0];
+		instruct.erase(instruct.begin());
+		joy.axes[5] = instruct[0];
+		instruct.erase(instruct.begin());
+		last++;
 	}
-	else if(t_elapsed < pulse_time + START_TIME){
-		pwr_msg.linear.x = step_size;
-		pwr_msg.linear.y = step_size;
-	}
-	else if(t_elapsed < pulse_time + START_TIME + DELAY_OFF ){
-		pwr_msg.linear.x = 0;
-		pwr_msg.linear.y = 0;
-	}
-	else
-		run = false;
-	
-	pwr_msg.linear.z = t_elapsed; //ros::Time::now().toSec();
-	motor_power_pub.publish(pwr_msg);
+	motor_power_pub.publish(joy);
 	return;
 }
 
@@ -82,17 +83,28 @@ int main(int argc, char **argv)
   ros::NodeHandle nh(NODE_NAME);
   nh.param<float>("step_size",step_size,50.0);
   nh.param<float>("pulse_time",pulse_time,5.0);
-
+	nh.param<std::string>("s",s,"0.0,1.1");
   ros::Rate loop_rate(LOOP_FREQ);
+	//ROS_INFO("v: %s", v);
   
-  //set up communication channels
+//set up communication channels
   // TODO add the other channels
-  motor_power_pub = n.advertise<geometry_msgs::Twist>(ADVERTISE_POWER, POWER_BUFFER_SIZE);
+  motor_power_pub = n.advertise<sensor_msgs::Joy>(JOY_PUB, POWER_BUFFER_SIZE);
   wheel_vel_sub = n.subscribe<std_msgs::Float32MultiArray>(SUBSCRIBE_WHEEL_VEL, BUFFER_SIZE, encoderCallback);
   
+
+	size_t pos = 0;
+	std::string token;
+	while((pos = s.find(",")) != std::string::npos){
+		token = s.substr(0,pos);
+		float temp = strtof((token).c_str(),0);
+		instruct.push_back(temp);
+		s.erase(0,pos + 1);
+	}
+
   float updatefreq = LOOP_FREQ;
 
-  ROS_INFO("Data in format: t, L_pow, R_pow, L_vel, R_vel");
+  ROS_INFO("Data in format: t, w_ref, v_ref, L_vel, R_vel");
  // t_start = clock();
   int i = 1;
   while(ros::ok() && run){
@@ -103,8 +115,10 @@ int main(int argc, char **argv)
 		i = 0;
 		pubEnginePower();
 	}
-	ROS_INFO("%f,%f,%f,%f,%f",(float)loop_times/LOOP_FREQ,pwr_msg.linear.x, pwr_msg.linear.y, current_L_vel, current_R_vel);
+	ROS_INFO("%f,%f,%f,%f,%f",(float)loop_times/LOOP_FREQ,instruct[0], instruct[1], current_L_vel, current_R_vel);
   	i++;
+	if (instruct.empty())
+		break;
 	ros::spinOnce();
   	loop_rate.sleep();
 
