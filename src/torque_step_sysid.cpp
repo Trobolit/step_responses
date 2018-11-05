@@ -16,7 +16,7 @@
 #define SUBSCRIBE_WHEEL_VEL "wheel_velocity"
 #define BUFFER_SIZE 5
 #define POWER_BUFFER_SIZE 200
-#define LOOP_FREQ 100
+#define LOOP_FREQ 20
 
 //#define STEP_SIZE 100
 #define START_TIME 2
@@ -99,7 +99,7 @@ int main(int argc, char **argv)
 	loop_times++;
 	//std::cout << "yo\n";
 	//ROS_INFO("yo");
-	if( i == 5 ) {
+	if( i == 1 ) {
 		i = 0;
 		pubEnginePower();
 	}
