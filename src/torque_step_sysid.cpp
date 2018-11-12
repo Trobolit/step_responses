@@ -14,12 +14,11 @@
 
 //constant setup variables change those values here
 #define NODE_NAME "torque_step_sysid"
-#define ADVERTISE_POWER "motor_power" //publishing channel
 #define JOY_PUB "joy"
 #define SUBSCRIBE_WHEEL_VEL "wheel_velocity"
 #define BUFFER_SIZE 5
 #define POWER_BUFFER_SIZE 200
-#define LOOP_FREQ 100
+#define LOOP_FREQ 20 
 
 //#define STEP_SIZE 100
 #define START_TIME 2
@@ -39,7 +38,7 @@ float step_size;
 
 //clock_t t_start;
 float t_elapsed = 0;
-float last = 0;
+float last = 1;
 int i = 0;
 int loop_times = 0;
 bool run = true;
@@ -54,12 +53,11 @@ void pubEnginePower()
 	//t_elapsed = 100*((float)clock() - (float)t_start)/CLOCKS_PER_SEC; // in seconds
 
 	t_elapsed = (float)loop_times/LOOP_FREQ ;
-	joy.buttons[7] = 1;
-	if( t_elapsed > last){
+	if( t_elapsed >= last){
+		instruct.erase(instruct.begin());
 		joy.axes[0] = instruct[0];
 		instruct.erase(instruct.begin());
-		joy.axes[5] = instruct[0];
-		instruct.erase(instruct.begin());
+		joy.axes[5] = -instruct[0];
 		last++;
 	}
 	motor_power_pub.publish(joy);
@@ -103,11 +101,34 @@ int main(int argc, char **argv)
 	}
 
   float updatefreq = LOOP_FREQ;
+joy.buttons.resize(11);
+joy.axes.resize(8);
+
+joy.buttons[0] = 0;
+joy.buttons[1] = 0;
+joy.buttons[2] = 0;
+joy.buttons[3] = 0;
+joy.buttons[4] = 0;
+joy.buttons[5] = 0;
+joy.buttons[6] = 0;
+joy.buttons[7] = 1;
+joy.buttons[8] = 0;
+joy.buttons[9] = 0;
+joy.buttons[10] = 0;
+
+joy.axes[0] = 0;
+joy.axes[1] = 0;
+joy.axes[2] = 0;
+joy.axes[3] = 0;
+joy.axes[4] = 0;
+joy.axes[5] = 0;
+joy.axes[6] = 0;
+joy.axes[7] = 0;
 
   ROS_INFO("Data in format: t, w_ref, v_ref, L_vel, R_vel");
  // t_start = clock();
   int i = 1;
-  while(ros::ok() && run){
+  while(ros::ok() && run && (instruct.empty() != std::string::npos)){
 	loop_times++;
 	//std::cout << "yo\n";
 	//ROS_INFO("yo");
@@ -115,10 +136,8 @@ int main(int argc, char **argv)
 		i = 0;
 		pubEnginePower();
 	}
-	ROS_INFO("%f,%f,%f,%f,%f",(float)loop_times/LOOP_FREQ,instruct[0], instruct[1], current_L_vel, current_R_vel);
+	ROS_INFO("%f,%f,%f,%f,%f",(float)loop_times/LOOP_FREQ,instruct[0], -instruct[1], current_L_vel, current_R_vel);
   	i++;
-	if (instruct.empty())
-		break;
 	ros::spinOnce();
   	loop_rate.sleep();
 
