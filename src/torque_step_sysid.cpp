@@ -6,6 +6,8 @@
 #include <math.h>
 #include <string>
 #include <vector>
+#include <iostream>
+#include <cstdlib>
 
 #include "std_msgs/Float32MultiArray.h"
 #include "std_msgs/MultiArrayLayout.h"
@@ -37,8 +39,8 @@ float current_R_vel = 0;
 float step_size;
 
 //clock_t t_start;
-float t_elapsed = 0;
-float last = 1;
+int t_elapsed = 0;
+int last = 1;
 int i = 0;
 int loop_times = 0;
 bool run = true;
@@ -52,13 +54,12 @@ void pubEnginePower()
 {
 	//t_elapsed = 100*((float)clock() - (float)t_start)/CLOCKS_PER_SEC; // in seconds
 
-	t_elapsed = (float)loop_times/LOOP_FREQ ;
-	if( t_elapsed >= last){
-		instruct.erase(instruct.begin());
-		joy.axes[0] = instruct[0];
-		instruct.erase(instruct.begin());
-		joy.axes[5] = -instruct[0];
-		last++;
+	if( loop_times >= last){
+		//joy.axes[5] = (2 * (((float) rand()) / 2.0)) - 1.0;//-instruct[0];
+		joy.axes[5] = (((float) (rand() %200)) / 100.0) -1;
+		//instruct.erase(instruct.begin());
+		loop_times = 0;
+		last = (rand() %140) + 10;
 	}
 	motor_power_pub.publish(joy);
 	return;
@@ -81,7 +82,7 @@ int main(int argc, char **argv)
   ros::NodeHandle nh(NODE_NAME);
   nh.param<float>("step_size",step_size,50.0);
   nh.param<float>("pulse_time",pulse_time,5.0);
-	nh.param<std::string>("s",s,"0.0,1.1");
+	nh.param<std::string>("s",s,"0.0,0.8");
   ros::Rate loop_rate(LOOP_FREQ);
 	//ROS_INFO("v: %s", v);
   
@@ -136,7 +137,7 @@ joy.axes[7] = 0;
 		i = 0;
 		pubEnginePower();
 	}
-	ROS_INFO("%f,%f,%f,%f,%f",(float)loop_times/LOOP_FREQ,instruct[0], -instruct[1], current_L_vel, current_R_vel);
+	ROS_INFO("%f,%f,%f,%f",(float)loop_times/LOOP_FREQ, joy.axes[5], current_L_vel, current_R_vel);
   	i++;
 	ros::spinOnce();
   	loop_rate.sleep();
