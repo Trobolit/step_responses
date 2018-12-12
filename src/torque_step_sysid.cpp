@@ -59,7 +59,7 @@ void pubEnginePower()
 		joy.axes[5] = (((float) (rand() %200)) / 100.0) -1;
 		//instruct.erase(instruct.begin());
 		loop_times = 0;
-		last = (rand() %140) + 10;
+		last = (rand() %10) + 10;
 	}
 	motor_power_pub.publish(joy);
 	return;
